@@ -79,13 +79,14 @@ fun configureServer(): Server {
         )
     }
 
-    // Add a tool
+    // Add tools
     server.addTool(
-        name = "kotlin-sdk-tool",
-        description = "A test tool",
-    ) { _ ->
+        name = "get-adl-system-prompt-tool",
+        description = "Retrieves the system prompt for a given use case",
+    ) { request ->
+        val useCase = request.arguments?.get(USE_CASE_PARAM) as? String ?: "unknown"
         CallToolResult(
-            content = listOf(TextContent("Hello, world!")),
+            content = listOf(TextContent("Received use_case: $useCase")),
         )
     }
 
