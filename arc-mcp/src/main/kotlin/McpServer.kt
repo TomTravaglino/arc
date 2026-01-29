@@ -8,6 +8,7 @@ import io.ktor.server.cio.CIO
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.cors.routing.CORS
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
@@ -36,6 +37,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.asSink
 import kotlinx.io.asSource
 import kotlinx.io.buffered
+
+private const val USE_CASE_PARAM = "useCase"
 
 fun configureServer(): Server {
     val server = Server(
@@ -161,6 +164,23 @@ fun runSseMcpServerUsingKtorPlugin(port: Int, wait: Boolean = true): EmbeddedSer
         mcp {
             return@mcp configureServer()
         }
+        routing {
+            post("/adl_system_prompt") {
+                val useCase = call.parameters[USE_CASE_PARAM]
+                    ?: call.request.queryParameters[USE_CASE_PARAM]
+                    ?: try {
+                        call.receive<Map<String, String>>()[USE_CASE_PARAM]
+                    } catch (e: Exception) {
+                        null
+                    }
+
+                if (useCase == null) {
+                    call.respond(HttpStatusCode.BadRequest, "Missing $USE_CASE_PARAM parameter")
+                    return@post
+                }
+                call.respond(HttpStatusCode.OK, "Received use_case: $useCase")
+            }
+        }
     }.start(wait = wait)
     return server
 }
@@ -228,5 +248,3 @@ fun main(vararg args: String): Unit = runBlocking {
         }
     }
 }
-
-
