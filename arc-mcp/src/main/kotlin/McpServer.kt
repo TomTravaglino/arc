@@ -15,12 +15,14 @@ import io.ktor.server.routing.routing
 import io.ktor.server.sse.SSE
 import io.ktor.server.sse.sse
 import io.ktor.util.collections.ConcurrentMap
+import io.modelcontextprotocol.kotlin.sdk.server.RegisteredTool
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import io.modelcontextprotocol.kotlin.sdk.server.ServerSession
 import io.modelcontextprotocol.kotlin.sdk.server.SseServerTransport
 import io.modelcontextprotocol.kotlin.sdk.server.StdioServerTransport
 import io.modelcontextprotocol.kotlin.sdk.server.mcp
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.types.GetPromptResult
 import io.modelcontextprotocol.kotlin.sdk.types.Implementation
@@ -31,87 +33,121 @@ import io.modelcontextprotocol.kotlin.sdk.types.Role
 import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import io.modelcontextprotocol.kotlin.sdk.types.TextResourceContents
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.asSink
 import kotlinx.io.asSource
 import kotlinx.io.buffered
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 private const val USE_CASE_PARAM = "useCase"
 
-fun configureServer(): Server {
-    val server = Server(
-        Implementation(
-            name = "mcp-kotlin test server",
-            version = "0.1.0",
-        ),
-        ServerOptions(
-            capabilities = ServerCapabilities(
-                prompts = ServerCapabilities.Prompts(listChanged = true),
-                resources = ServerCapabilities.Resources(subscribe = true, listChanged = true),
-                tools = ServerCapabilities.Tools(listChanged = true),
+class McpServer {
+    fun configureServer(): Server {
+        val server = Server(
+            Implementation(
+                name = "mcp-kotlin test server",
+                version = "0.1.0",
             ),
-        ),
-    )
-
-    server.addPrompt(
-        name = "Kotlin Developer",
-        description = "Develop small kotlin applications",
-        arguments = listOf(
-            PromptArgument(
-                name = "Project Name",
-                description = "Project name for the new project",
-                required = true,
-            ),
-        ),
-    ) { request ->
-        GetPromptResult(
-            messages = listOf(
-                PromptMessage(
-                    role = Role.User,
-                    content = TextContent(
-                        "Develop a kotlin project named <name>${request.arguments?.get("Project Name")}</name>",
-                    ),
+            ServerOptions(
+                capabilities = ServerCapabilities(
+                    prompts = ServerCapabilities.Prompts(listChanged = true),
+                    resources = ServerCapabilities.Resources(subscribe = true, listChanged = true),
+                    tools = ServerCapabilities.Tools(listChanged = true),
                 ),
             ),
-            description = "Description for ${request.name}",
         )
+
+        server.addPrompt(
+            name = "Kotlin Developer",
+            description = "Develop small kotlin applications",
+            arguments = listOf(
+                PromptArgument(
+                    name = "Project Name",
+                    description = "Project name for the new project",
+                    required = true,
+                ),
+            ),
+        ) { request ->
+            GetPromptResult(
+                messages = listOf(
+                    PromptMessage(
+                        role = Role.User,
+                        content = TextContent(
+                            "Develop a kotlin project named <name>${request.arguments?.get("Project Name")}</name>",
+                        ),
+                    ),
+                ),
+                description = "Description for ${request.name}",
+            )
+        }
+
+        // Add tools
+        server.addTools(createTools())
+
+        // Add a resource
+        server.addResource(
+            uri = "https://search.com/",
+            name = "Web Search",
+            description = "Web search engine",
+            mimeType = "text/html",
+        ) { request ->
+            ReadResourceResult(
+                contents = listOf(
+                    TextResourceContents("Placeholder content for ${request.uri}", request.uri, "text/html"),
+                ),
+            )
+        }
+
+        return server
     }
 
-    // Add tools
-    server.addTool(
-        name = "get-adl-system-prompt-tool",
-        description = "Retrieves the system prompt for a given use case",
-    ) { request ->
-        val useCase = request.arguments?.get(USE_CASE_PARAM) as? String ?: "unknown"
-        CallToolResult(
-            content = listOf(TextContent("Received use_case: $useCase")),
-        )
+    private fun createTools(): List<RegisteredTool> {
+        val registeredTool = createAdlSystemPromptTool()
+        return listOf(registeredTool)
     }
 
-    // Add a resource
-    server.addResource(
-        uri = "https://search.com/",
-        name = "Web Search",
-        description = "Web search engine",
-        mimeType = "text/html",
-    ) { request ->
-        ReadResourceResult(
-            contents = listOf(
-                TextResourceContents("Placeholder content for ${request.uri}", request.uri, "text/html"),
+    private fun createAdlSystemPromptTool(): RegisteredTool {
+        val adlSystemPromptTool = Tool(
+            name = "get-adl-system-prompt-tool",
+            description = "Retrieves the system prompt for a given use case",
+            inputSchema = ToolSchema(
+                properties = buildJsonObject {
+                    put(USE_CASE_PARAM, buildJsonObject {
+                        put("type", "string")
+                        put("description", "The use case for which to retrieve the system prompt")
+                    })
+                },
+                required = listOf(USE_CASE_PARAM),
             ),
         )
-    }
 
-    return server
+        val handler: suspend (CallToolRequest) -> CallToolResult = { request ->
+            val useCase = try {
+                val argValue = request.arguments?.get(USE_CASE_PARAM)?.toString() ?: "unknown"
+                argValue
+            } catch (_: Exception) {
+                "unknown"
+            }
+            CallToolResult(
+                content = listOf(TextContent("Received use_case: $useCase")),
+            )
+        }
+
+        return RegisteredTool(adlSystemPromptTool, handler)
+    }
 }
 
 fun runSseMcpServerWithPlainConfiguration(port: Int, wait: Boolean = true): EmbeddedServer<*, *> {
     printBanner(port = port, path = "/sse")
     val serverSessions = ConcurrentMap<String, ServerSession>()
 
-    val server = configureServer()
+    val mcpServer = McpServer()
+    val server = mcpServer.configureServer()
 
     val ktorServer = embeddedServer(CIO, host = "127.0.0.1", port = port) {
         installCors()
@@ -160,10 +196,11 @@ fun runSseMcpServerWithPlainConfiguration(port: Int, wait: Boolean = true): Embe
 fun runSseMcpServerUsingKtorPlugin(port: Int, wait: Boolean = true): EmbeddedServer<*, *> {
     printBanner(port)
 
+    val mcpServer = McpServer()
     val server = embeddedServer(CIO, host = "127.0.0.1", port = port) {
         installCors()
         mcp {
-            return@mcp configureServer()
+            return@mcp mcpServer.configureServer()
         }
         routing {
             post("/adl_system_prompt") {
@@ -171,7 +208,7 @@ fun runSseMcpServerUsingKtorPlugin(port: Int, wait: Boolean = true): EmbeddedSer
                     ?: call.request.queryParameters[USE_CASE_PARAM]
                     ?: try {
                         call.receive<Map<String, String>>()[USE_CASE_PARAM]
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         null
                     }
 
@@ -213,7 +250,8 @@ private fun Application.installCors() {
  * communicates via stdin/stdout with a parent process or client.
  */
 fun runMcpServerUsingStdio() {
-    val server = configureServer()
+    val mcpServer = McpServer()
+    val server = mcpServer.configureServer()
     val transport = StdioServerTransport(
         inputStream = System.`in`.asSource().buffered(),
         outputStream = System.out.asSink().buffered(),
