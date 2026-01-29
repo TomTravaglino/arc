@@ -11,6 +11,12 @@ dependencies {
 
     // MCP
     implementation(libs.mcp.sdk)
+    implementation(libs.mcp.kotlin.sdk)
+
+    // Ktor
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.cio)
+    implementation(libs.ktor.server.cors)
 
     // Test
     testImplementation(project(":arc-spring-boot-starter"))
