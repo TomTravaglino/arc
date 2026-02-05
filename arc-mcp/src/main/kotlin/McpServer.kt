@@ -50,58 +50,58 @@ class McpServer {
     fun configureServer(): Server {
         val server = Server(
             Implementation(
-                name = "mcp-kotlin test server",
+                name = "Arc MCP server",
                 version = "0.1.0",
             ),
             ServerOptions(
                 capabilities = ServerCapabilities(
-                    prompts = ServerCapabilities.Prompts(listChanged = true),
-                    resources = ServerCapabilities.Resources(subscribe = true, listChanged = true),
+//                    prompts = ServerCapabilities.Prompts(listChanged = true),
+//                    resources = ServerCapabilities.Resources(subscribe = true, listChanged = true),
                     tools = ServerCapabilities.Tools(listChanged = true),
                 ),
             ),
         )
 
-        server.addPrompt(
-            name = "Kotlin Developer",
-            description = "Develop small kotlin applications",
-            arguments = listOf(
-                PromptArgument(
-                    name = "Project Name",
-                    description = "Project name for the new project",
-                    required = true,
-                ),
-            ),
-        ) { request ->
-            GetPromptResult(
-                messages = listOf(
-                    PromptMessage(
-                        role = Role.User,
-                        content = TextContent(
-                            "Develop a kotlin project named <name>${request.arguments?.get("Project Name")}</name>",
-                        ),
-                    ),
-                ),
-                description = "Description for ${request.name}",
-            )
-        }
+//        server.addPrompt(
+//            name = "Kotlin Developer",
+//            description = "Develop small kotlin applications",
+//            arguments = listOf(
+//                PromptArgument(
+//                    name = "Project Name",
+//                    description = "Project name for the new project",
+//                    required = true,
+//                ),
+//            ),
+//        ) { request ->
+//            GetPromptResult(
+//                messages = listOf(
+//                    PromptMessage(
+//                        role = Role.User,
+//                        content = TextContent(
+//                            "Develop a kotlin project named <name>${request.arguments?.get("Project Name")}</name>",
+//                        ),
+//                    ),
+//                ),
+//                description = "Description for ${request.name}",
+//            )
+//        }
 
         // Add tools
         server.addTools(createTools())
 
         // Add a resource
-        server.addResource(
-            uri = "https://search.com/",
-            name = "Web Search",
-            description = "Web search engine",
-            mimeType = "text/html",
-        ) { request ->
-            ReadResourceResult(
-                contents = listOf(
-                    TextResourceContents("Placeholder content for ${request.uri}", request.uri, "text/html"),
-                ),
-            )
-        }
+//        server.addResource(
+//            uri = "https://search.com/",
+//            name = "Web Search",
+//            description = "Web search engine",
+//            mimeType = "text/html",
+//        ) { request ->
+//            ReadResourceResult(
+//                contents = listOf(
+//                    TextResourceContents("Placeholder content for ${request.uri}", request.uri, "text/html"),
+//                ),
+//            )
+//        }
 
         return server
     }
@@ -113,7 +113,7 @@ class McpServer {
 
     private fun createAdlSystemPromptTool(): RegisteredTool {
         val adlSystemPromptTool = Tool(
-            name = "get-adl-system-prompt-tool",
+            name = "get-system-prompt",
             description = "Retrieves the system prompt for a given use case",
             inputSchema = ToolSchema(
                 properties = buildJsonObject {
@@ -135,6 +135,7 @@ class McpServer {
             }
             CallToolResult(
                 content = listOf(TextContent("Received use_case: $useCase")),
+                isError = false
             )
         }
 
@@ -162,9 +163,10 @@ fun runSseMcpServerWithPlainConfiguration(port: Int, wait: Boolean = true): Embe
                     println("Server session closed for: ${transport.sessionId}")
                     serverSessions.remove(transport.sessionId)
                 }
+
                 awaitCancellation()
             }
-            post("/adl_system_prompt") {
+            post("/message") {
                 val sessionId: String? = call.request.queryParameters["sessionId"]
                 if (sessionId == null) {
                     call.respond(HttpStatusCode.BadRequest, "Missing sessionId parameter")
@@ -201,23 +203,6 @@ fun runSseMcpServerUsingKtorPlugin(port: Int, wait: Boolean = true): EmbeddedSer
         installCors()
         mcp {
             return@mcp mcpServer.configureServer()
-        }
-        routing {
-            post("/adl_system_prompt") {
-                val useCase = call.parameters[USE_CASE_PARAM]
-                    ?: call.request.queryParameters[USE_CASE_PARAM]
-                    ?: try {
-                        call.receive<Map<String, String>>()[USE_CASE_PARAM]
-                    } catch (_: Exception) {
-                        null
-                    }
-
-                if (useCase == null) {
-                    call.respond(HttpStatusCode.BadRequest, "Missing $USE_CASE_PARAM parameter")
-                    return@post
-                }
-                call.respond(HttpStatusCode.OK, "Received use_case: $useCase")
-            }
         }
     }.start(wait = wait)
     return server
