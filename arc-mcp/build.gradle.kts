@@ -3,8 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 dependencies {
+    val graphqlKotlinVersion = "8.5.0"
+
     implementation(project(":arc-result"))
     implementation(project(":arc-agents"))
+    implementation(project(":arc-assistants"))
 
     // Logging
     implementation("org.slf4j:slf4j-api:2.0.17")
@@ -17,6 +20,10 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
     implementation(libs.ktor.server.cors)
+
+    // GraphQL
+    implementation("com.expediagroup:graphql-kotlin-schema-generator:${graphqlKotlinVersion}")
+    implementation("com.expediagroup:graphql-kotlin-server:${graphqlKotlinVersion}")
 
     // Test
     testImplementation(project(":arc-spring-boot-starter"))

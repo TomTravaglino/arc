@@ -55,53 +55,13 @@ class McpServer {
             ),
             ServerOptions(
                 capabilities = ServerCapabilities(
-//                    prompts = ServerCapabilities.Prompts(listChanged = true),
-//                    resources = ServerCapabilities.Resources(subscribe = true, listChanged = true),
                     tools = ServerCapabilities.Tools(listChanged = true),
                 ),
             ),
         )
 
-//        server.addPrompt(
-//            name = "Kotlin Developer",
-//            description = "Develop small kotlin applications",
-//            arguments = listOf(
-//                PromptArgument(
-//                    name = "Project Name",
-//                    description = "Project name for the new project",
-//                    required = true,
-//                ),
-//            ),
-//        ) { request ->
-//            GetPromptResult(
-//                messages = listOf(
-//                    PromptMessage(
-//                        role = Role.User,
-//                        content = TextContent(
-//                            "Develop a kotlin project named <name>${request.arguments?.get("Project Name")}</name>",
-//                        ),
-//                    ),
-//                ),
-//                description = "Description for ${request.name}",
-//            )
-//        }
-
         // Add tools
         server.addTools(createTools())
-
-        // Add a resource
-//        server.addResource(
-//            uri = "https://search.com/",
-//            name = "Web Search",
-//            description = "Web search engine",
-//            mimeType = "text/html",
-//        ) { request ->
-//            ReadResourceResult(
-//                contents = listOf(
-//                    TextResourceContents("Placeholder content for ${request.uri}", request.uri, "text/html"),
-//                ),
-//            )
-//        }
 
         return server
     }
