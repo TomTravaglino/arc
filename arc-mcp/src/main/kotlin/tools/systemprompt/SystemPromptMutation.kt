@@ -2,15 +2,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package org.eclipse.lmos.arc.mcp.systemprompt
+package org.eclipse.lmos.arc.mcp.tools.systemprompt
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import com.expediagroup.graphql.server.operations.Mutation
+import kotlinx.serialization.Serializable
 import org.eclipse.lmos.arc.assistants.support.usecases.UseCase
 import org.eclipse.lmos.arc.assistants.support.usecases.formatToString
 import org.eclipse.lmos.arc.assistants.support.usecases.toUseCases
-import org.eclipse.lmos.arc.mcp.systemprompt.sessions.Sessions
-import org.eclipse.lmos.arc.mcp.systemprompt.templates.TemplateLoader
+import org.eclipse.lmos.arc.mcp.tools.systemprompt.sessions.Sessions
+import org.eclipse.lmos.arc.mcp.tools.systemprompt.templates.TemplateLoader
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -61,6 +62,7 @@ class SystemPromptMutation(
 /**
  * Data class for the SystemPrompt result.
  */
+@Serializable
 data class SystemPromptResult(
     val systemPrompt: String,
     val useCaseCount: Int,
