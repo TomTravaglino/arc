@@ -54,8 +54,8 @@ class McpServer {
     }
 
     private fun createTools(): List<RegisteredTool> {
-        val registeredTool = SystemPromptTool().createAdlSystemPromptTool()
-        return listOf(registeredTool)
+        val adlSystemPromptTool = SystemPromptTool().createAdlSystemPromptTool()
+        return listOf(adlSystemPromptTool)
     }
 }
 
