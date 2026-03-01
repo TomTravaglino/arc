@@ -1,26 +1,15 @@
 package org.eclipse.lmos.arc.mcp
 
-import io.ktor.http.HttpMethod
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.application.install
-import io.ktor.server.cio.CIO
-import io.ktor.server.engine.EmbeddedServer
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.plugins.cors.routing.CORS
-import io.ktor.server.response.respond
-import io.ktor.server.routing.post
-import io.ktor.server.routing.routing
-import io.ktor.server.sse.SSE
-import io.ktor.server.sse.sse
-import io.ktor.util.collections.ConcurrentMap
-import io.modelcontextprotocol.kotlin.sdk.server.RegisteredTool
-import io.modelcontextprotocol.kotlin.sdk.server.Server
-import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
-import io.modelcontextprotocol.kotlin.sdk.server.ServerSession
-import io.modelcontextprotocol.kotlin.sdk.server.SseServerTransport
-import io.modelcontextprotocol.kotlin.sdk.server.StdioServerTransport
-import io.modelcontextprotocol.kotlin.sdk.server.mcp
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.cio.*
+import io.ktor.server.engine.*
+import io.ktor.server.plugins.cors.routing.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import io.ktor.server.sse.*
+import io.ktor.util.collections.*
+import io.modelcontextprotocol.kotlin.sdk.server.*
 import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
 import kotlinx.coroutines.Job
@@ -29,6 +18,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.asSink
 import kotlinx.io.asSource
 import kotlinx.io.buffered
+import org.eclipse.lmos.arc.mcp.prompts.systemprompt.SystemPrompt
 import org.eclipse.lmos.arc.mcp.tools.systemprompt.SystemPromptTool
 
 private const val USE_CASE_PARAM = "useCase"
@@ -43,18 +33,24 @@ class McpServer {
             ServerOptions(
                 capabilities = ServerCapabilities(
                     tools = ServerCapabilities.Tools(listChanged = true),
+                    prompts = ServerCapabilities.Prompts(listChanged = true),
                 ),
             ),
         )
 
-        // Add tools
         server.addTools(createTools())
+        server.addPrompts(createSystemPrompts())
 
         return server
     }
 
+    private fun createSystemPrompts(): List<RegisteredPrompt> {
+        val systemPrompt: RegisteredPrompt = SystemPrompt().createSystemPrompt()
+        return listOf(systemPrompt)
+    }
+
     private fun createTools(): List<RegisteredTool> {
-        val adlSystemPromptTool = SystemPromptTool().createAdlSystemPromptTool()
+        val adlSystemPromptTool: RegisteredTool = SystemPromptTool().createAdlSystemPromptTool()
         return listOf(adlSystemPromptTool)
     }
 }
