@@ -18,8 +18,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.asSink
 import kotlinx.io.asSource
 import kotlinx.io.buffered
-import org.eclipse.lmos.arc.mcp.prompts.systemprompt.SystemPrompt
-import org.eclipse.lmos.arc.mcp.tools.systemprompt.SystemPromptTool
+import org.eclipse.lmos.arc.mcp.prompts.SystemPrompt
+import org.eclipse.lmos.arc.mcp.tools.SystemPromptTool
 
 private const val USE_CASE_PARAM = "useCase"
 

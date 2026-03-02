@@ -1,13 +1,18 @@
-package org.eclipse.lmos.arc.mcp.tools.systemprompt
+package org.eclipse.lmos.arc.mcp.tools
 
 import io.modelcontextprotocol.kotlin.sdk.server.RegisteredTool
-import io.modelcontextprotocol.kotlin.sdk.types.*
-import kotlinx.serialization.encodeToString
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.Tool
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import org.eclipse.lmos.arc.mcp.tools.systemprompt.sessions.InMemorySessions
+import org.eclipse.lmos.arc.mcp.Util
+import org.eclipse.lmos.arc.mcp.SystemPromptMutation
+import org.eclipse.lmos.arc.mcp.SystemPromptResult
+import org.eclipse.lmos.arc.mcp.sessions.InMemorySessions
 import org.eclipse.lmos.arc.mcp.tools.systemprompt.templates.TemplateLoader
 
 class SystemPromptTool {
@@ -42,26 +47,15 @@ class SystemPromptTool {
         )
     }
 
-    private fun getRequestParameter(request: CallToolRequest, paramName: String, defaultValue: String = "unknown"): String {
-        return try {
-            when (val value = request.arguments?.get(paramName)) {
-                is JsonPrimitive -> value.content
-                else -> value?.toString() ?: defaultValue
-            }
-        } catch (_: Exception) {
-            defaultValue
-        }
-    }
 
     private fun createHandler(): suspend (CallToolRequest) -> CallToolResult = { request ->
-        val useCase = getRequestParameter(request, USE_CASE_PARAM)
-
-        val sessionId = getRequestParameter(request, SESSION_ID_PARAM)
+        val useCase = Util.Companion.getRequestParameter(request, USE_CASE_PARAM)
+        val sessionId = Util.Companion.getRequestParameter(request, SESSION_ID_PARAM)
         val systemPromptMutation = SystemPromptMutation(sessions, templateLoader)
         val systemPrompt : SystemPromptResult = systemPromptMutation.systemPrompt(useCase, sessionId = sessionId)
 
         CallToolResult(
-            content = listOf(TextContent(Json.encodeToString(systemPrompt))),
+            content = listOf(TextContent(Json.Default.encodeToString(systemPrompt))),
             isError = false
         )
     }
